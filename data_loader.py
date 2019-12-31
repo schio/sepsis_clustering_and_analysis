@@ -1,23 +1,61 @@
-# import pandas as pd
-
-# def get_for_mice_df():
-#     return pd.read_csv('~/Workspace/paper/mimic/labeled_new_for_mice.csv')
-
-# def get_after_mice_df():
-#     return pd.read_csv('~/Workspace/paper/mimic/labeled_new_after_mice.csv')
-
 import pandas as pd
 import numpy as np
 import os
 
 class DataLoader():
-    def get_origin_csv_path(self, file_name):
-        origin_csv_path = "~/Workspace/paper/mimic"
-        df = pd.read_csv(os.path.join(origin_csv_path, "csv", file_name))
+    def __init__(self):
+        self.origin_csv_path = "~/Workspace/paper/mimic"
+        
+        self.load_labeled_after_feature()
+        self.load_labeled_for_feature()
+
+
+    def extract_labeled_after_feature(self):
+        label_df = self.load_label()
+        label_col = label_df.columns
+
+        after_feature_df = self.get_csv_path("new_feature_v1_after_mice.csv", is_row_mimic=False)        
+        result = pd.merge(label_df, after_feature_df, on=['hadm_id'], how='right')
+        result[label_col] = result[label_col].fillna(0)
+        result.to_csv('./labeled_new_feature_v1_after_mice.csv', index=False)
+
+        return result
+
+    def load_labeled_after_feature(self):
+        return self.load_or_extarct("labeled_new_feature_v1_after_mice.csv", self.extract_labeled_after_feature)
+
+    def extract_labeled_for_feature(self):
+        label_df = self.load_label()
+        label_col = label_df.columns
+
+        for_feature_df = self.get_csv_path("new_feature_v1_for_mice.csv", is_row_mimic=False)        
+        result = pd.merge(label_df, for_feature_df, on=['hadm_id'], how='right')
+        result[label_col] = result[label_col].fillna(0)
+        result.to_csv('./labeled_new_feature_v1_for_mice.csv', index=False)
+
+        return result
+
+    def load_labeled_for_feature(self):
+        return self.load_or_extarct("labeled_new_feature_v1_for_mice.csv", self.extract_labeled_for_feature)
+
+    def load_or_extarct(self, file_name, func):
+        csv_path = os.path.join(".", file_name)
+        if os.path.exists(csv_path):
+            return pd.read_csv(csv_path)
+        else:
+            return func()
+
+    def get_csv_path(self, file_name, is_row_mimic=True):
+        
+        if is_row_mimic:
+            df = pd.read_csv(os.path.join(self.origin_csv_path, "csv", file_name))
+        else:
+            df = pd.read_csv(os.path.join(self.origin_csv_path, file_name))
         df.columns = map(str.lower, df.columns)
         return df
+        
     def extract_icu_readmission(self):
-        visit_df = self.get_origin_csv_path("TRANSFERS.csv")
+        visit_df = self.get_csv_path("TRANSFERS.csv")
         visit_df = visit_df[['subject_id','hadm_id','eventtype','intime','outtime','icustay_id']]
         filter_list = ['admit', 'discharge']
         visit_df = visit_df[visit_df.eventtype.isin(filter_list)]
@@ -53,32 +91,39 @@ class DataLoader():
 
             return pd.Series(res, name=f"readmit_{days}d").clip(0, 1)
 
-        target_df = new_visit_df[['subject_id', 'hadm_id','icustay_id']]
+        icu_readmission = new_visit_df[['subject_id', 'hadm_id','icustay_id']]
         target_days = [2, 7, 28]
         for day in target_days:
-            target_df = pd.concat([target_df, get_target_days(day)], axis=1)
+            icu_readmission = pd.concat([icu_readmission, get_target_days(day)], axis=1)
         print(f"ICU 입원 수: {visit_df[visit_df.eventtype == 'admit'].shape[0]}")
-        print(f"2일 내 icu 재입원 환자 수: {target_df['readmit_2d'].value_counts()[1]}")
-        print(f"7일 내 icu 재입원 환자 수: {target_df['readmit_7d'].value_counts()[1]}")
-        print(f"28일 내 icu 재입원 환자 수: {target_df['readmit_28d'].value_counts()[1]}")
-        return target_days
+        print(f"2일 내 icu 재입원 환자 수: {icu_readmission['readmit_2d'].value_counts()[1]}")
+        print(f"7일 내 icu 재입원 환자 수: {icu_readmission['readmit_7d'].value_counts()[1]}")
+        print(f"28일 내 icu 재입원 환자 수: {icu_readmission['readmit_28d'].value_counts()[1]}")
+        icu_readmission.to_csv("./icu_readmission.csv", index=False)
+        return icu_readmission
 
+    def load_icu_readmission(self):
+        return self.load_or_extarct("icu_readmission.csv", self.extract_icu_readmission)
 
     def extract_dead_in_hosp(self):
-        admission_df = self.get_origin_csv_path("ADMISSIONS.csv")
+        admission_df = self.get_csv_path("ADMISSIONS.csv")
 
         dead_in_hosp = admission_df[admission_df.hospital_expire_flag ==1][['hadm_id','hospital_expire_flag']]
         dead_in_hosp.columns=['hadm_id','dead_in_hosp']
         print('병원 내 사망자 수:',dead_in_hosp.shape[0])
+        dead_in_hosp.to_csv("./dead_in_hosp.csv",index=False)
         return dead_in_hosp
+    
+    def load_dead_in_hosp(self):
+        return self.load_or_extarct("dead_in_hosp.csv", self.extract_dead_in_hosp)
 
     def extract_key(self):
-        patients = self.get_origin_csv_path("PATIENTS.csv")
+        patients = self.get_csv_path("PATIENTS.csv")
         patients = patients.fillna(0)
         patients = patients[patients.dod != 0].drop(columns=['row_id'])
         print('미믹 내 사망자 수:',patients.shape[0])
 
-        last_admit_df = self.get_origin_csv_path("ADMISSIONS.csv").fillna(0)
+        last_admit_df = self.get_csv_path("ADMISSIONS.csv").fillna(0)
         last_admit_df.columns = map(str.lower, last_admit_df.columns)
         last_admit_df = last_admit_df.sort_values(by=['admittime'])
         last_admit_df = last_admit_df.groupby(['subject_id']).tail(1).drop(columns=['row_id'])
@@ -95,5 +140,21 @@ class DataLoader():
         print(f"입원 후 28일 내 사망자(병원내 사망 제외): {key_df['dead_in_28d'].value_counts()[1]}")
         print(f"입원 후 6개월 내 사망자(병원내 사망 제외): {key_df['dead_in_6m'].value_counts()[1]}")
         print(f"사망자(병원내 사망 제외): {key_df['dead_los'].value_counts().sum()}")
-
+        key_df.to_csv("./key.csv",index=False)
         return key_df
+
+    def load_key(self):
+        return self.load_or_extarct("key.csv", self.extract_key)
+
+    def extract_label(self):
+        dead_in_hosp_df = self.load_dead_in_hosp()
+        key_df = self.load_key()
+        icu_readmission_df = self.load_icu_readmission()
+
+        labled_feature = pd.merge(icu_readmission_df, dead_in_hosp_df, on=['hadm_id'], how='left')
+        labled_feature = pd.merge(labled_feature, key_df[['dead_in_28d','dead_in_6m','dead_los','hadm_id']], on=['hadm_id'], how='left').fillna(0).drop(columns=['subject_id','icustay_id'])
+        labled_feature.to_csv('./label.csv', index=False)
+        return labled_feature
+
+    def load_label(self):
+        return self.load_or_extarct("./label.csv", self.extract_label)
