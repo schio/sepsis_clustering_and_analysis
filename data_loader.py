@@ -1,16 +1,16 @@
 import pandas as pd
 import numpy as np
 import os
+import warnings
+
 
 class DataLoader():
     def __init__(self):
-        self.origin_csv_path = "~/Workspace/paper/mimic"
-        
-        self.load_labeled_after_feature()
-        self.load_labeled_for_feature()
-
+        warnings.filterwarnings('ignore')
+        self.origin_csv_path = "~/Workspace/paper/mimic"    
 
     def extract_labeled_after_feature(self):
+        print("RUN extract_labeled_after_feature")
         label_df = self.load_label()
         label_col = label_df.columns
 
@@ -22,9 +22,11 @@ class DataLoader():
         return result
 
     def load_labeled_after_feature(self):
+        print("RUN load_labeled_after_feature")
         return self.load_or_extarct("labeled_new_feature_v1_after_mice.csv", self.extract_labeled_after_feature)
 
     def extract_labeled_for_feature(self):
+        print("RUN extract_labeled_for_feature")
         label_df = self.load_label()
         label_col = label_df.columns
 
@@ -36,6 +38,7 @@ class DataLoader():
         return result
 
     def load_labeled_for_feature(self):
+        print("RUN load_labeled_for_feature")
         return self.load_or_extarct("labeled_new_feature_v1_for_mice.csv", self.extract_labeled_for_feature)
 
     def load_or_extarct(self, file_name, func):
@@ -46,7 +49,6 @@ class DataLoader():
             return func()
 
     def get_csv_path(self, file_name, is_row_mimic=True):
-        
         if is_row_mimic:
             df = pd.read_csv(os.path.join(self.origin_csv_path, "csv", file_name))
         else:
@@ -55,6 +57,7 @@ class DataLoader():
         return df
         
     def extract_icu_readmission(self):
+        print("RUN extract_icu_readmission")
         visit_df = self.get_csv_path("TRANSFERS.csv")
         visit_df = visit_df[['subject_id','hadm_id','eventtype','intime','outtime','icustay_id']]
         filter_list = ['admit', 'discharge']
@@ -103,9 +106,11 @@ class DataLoader():
         return icu_readmission
 
     def load_icu_readmission(self):
+        print("RUN load_icu_readmission")
         return self.load_or_extarct("icu_readmission.csv", self.extract_icu_readmission)
 
     def extract_dead_in_hosp(self):
+        print("RUN extract_dead_in_hosp")
         admission_df = self.get_csv_path("ADMISSIONS.csv")
 
         dead_in_hosp = admission_df[admission_df.hospital_expire_flag ==1][['hadm_id','hospital_expire_flag']]
@@ -115,9 +120,11 @@ class DataLoader():
         return dead_in_hosp
     
     def load_dead_in_hosp(self):
+        print("RUN load_dead_in_hosp")
         return self.load_or_extarct("dead_in_hosp.csv", self.extract_dead_in_hosp)
 
     def extract_key(self):
+        print("RUN extract_key")
         patients = self.get_csv_path("PATIENTS.csv")
         patients = patients.fillna(0)
         patients = patients[patients.dod != 0].drop(columns=['row_id'])
@@ -144,9 +151,11 @@ class DataLoader():
         return key_df
 
     def load_key(self):
+        print("RUN load_key")
         return self.load_or_extarct("key.csv", self.extract_key)
 
     def extract_label(self):
+        print("RUN extract_label")
         dead_in_hosp_df = self.load_dead_in_hosp()
         key_df = self.load_key()
         icu_readmission_df = self.load_icu_readmission()
@@ -157,4 +166,30 @@ class DataLoader():
         return labled_feature
 
     def load_label(self):
+        print("RUN load_label")
         return self.load_or_extarct("./label.csv", self.extract_label)
+
+    def ohe(self, df, columns):
+        ohes = []
+        for col in columns:
+            df[col] = df[col].astype(str)
+            temp_df = pd.get_dummies(df[col])
+            temp_df.columns=list(map(lambda x: col+'_'+x, temp_df.columns))
+            df = df.drop(columns=[col])
+            ohes.append(temp_df)
+        
+        temp_df = pd.concat(ohes, axis=1)
+        return pd.concat([df,temp_df], axis=1)
+
+    def get_xy(self, df):
+        y_columns = ['readmit_2d', 'readmit_7d', 'readmit_28d', 'dead_in_hosp', 'dead_in_28d', 'dead_in_6m', 'dead_los']
+        need_ohe_cols = ['gender']
+        df = self.ohe(df, need_ohe_cols)
+
+        y = df[y_columns].fillna(0)
+        x = df.drop(columns=y_columns)
+        x = x.drop(columns=['hadm_id','icustay_id', 'unnamed: 0'])
+        x = x.fillna(-1)
+        x = x.drop(columns=['sofa'])
+
+        return [x, y]
