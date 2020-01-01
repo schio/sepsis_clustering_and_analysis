@@ -9,8 +9,11 @@ class Clustering():
     def __init__(self):
         a=5
 
-    def kmeans(self, x):
+    def kmeans(self, x, origin_df, feature_name_for_save):
         kmeans = KMeans(n_clusters=4, random_state=75).fit(x.values)
-        label = pd.DataFrame(kmeans.labels_, columns=['labels'])
-        return label
+        category = pd.DataFrame(kmeans.labels_, columns=['cluster_category'])
+        category_origin_df = pd.concat([origin_df, category],axis=1)
+
+        category_origin_df.to_csv(f"./cluster_{feature_name_for_save}.csv")
+        return category_origin_df
     

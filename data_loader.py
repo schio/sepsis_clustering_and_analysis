@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import warnings
-
+from sklearn.preprocessing import StandardScaler
 
 class DataLoader():
     def __init__(self):
@@ -188,8 +188,17 @@ class DataLoader():
 
         y = df[y_columns].fillna(0)
         x = df.drop(columns=y_columns)
-        x = x.drop(columns=['hadm_id','icustay_id', 'unnamed: 0'])
+        x = x.drop(columns=['hadm_id','icustay_id'])
+        if 'unnamed: 0' in df.columns:
+            x = x.drop(columns=['unnamed: 0'])
         x = x.fillna(-1)
         x = x.drop(columns=['sofa'])
 
         return [x, y]
+    
+    def get_standard_scaler(self, x):
+        std_scaler = StandardScaler()
+        std_scaler.fit(x.values)
+        std_x = std_scaler.transform(x.values)
+        std_x = pd.DataFrame(std_x, columns=x.columns, index=list(x.index.values))
+        return std_x
