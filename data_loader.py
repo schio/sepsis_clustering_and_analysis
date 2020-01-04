@@ -17,7 +17,7 @@ class DataLoader():
         after_feature_df = self.get_csv_path("new_feature_v1_after_mice.csv", is_row_mimic=False)        
         result = pd.merge(label_df, after_feature_df, on=['hadm_id'], how='right')
         result[label_col] = result[label_col].fillna(0)
-        result.to_csv('./labeled_new_feature_v1_after_mice.csv', index=False)
+        result.to_csv('./result/labeled_new_feature_v1_after_mice.csv', index=False)
 
         return result
 
@@ -33,7 +33,7 @@ class DataLoader():
         for_feature_df = self.get_csv_path("new_feature_v1_for_mice.csv", is_row_mimic=False)        
         result = pd.merge(label_df, for_feature_df, on=['hadm_id'], how='right')
         result[label_col] = result[label_col].fillna(0)
-        result.to_csv('./labeled_new_feature_v1_for_mice.csv', index=False)
+        result.to_csv('./result/labeled_new_feature_v1_for_mice.csv', index=False)
 
         return result
 
@@ -42,7 +42,7 @@ class DataLoader():
         return self.load_or_extarct("labeled_new_feature_v1_for_mice.csv", self.extract_labeled_for_feature)
 
     def load_or_extarct(self, file_name, func):
-        csv_path = os.path.join(".", file_name)
+        csv_path = os.path.join("~", "result", file_name)
         if os.path.exists(csv_path):
             return pd.read_csv(csv_path)
         else:
@@ -102,7 +102,7 @@ class DataLoader():
         print(f"2일 내 icu 재입원 환자 수: {icu_readmission['readmit_2d'].value_counts()[1]}")
         print(f"7일 내 icu 재입원 환자 수: {icu_readmission['readmit_7d'].value_counts()[1]}")
         print(f"28일 내 icu 재입원 환자 수: {icu_readmission['readmit_28d'].value_counts()[1]}")
-        icu_readmission.to_csv("./icu_readmission.csv", index=False)
+        icu_readmission.to_csv("./result/icu_readmission.csv", index=False)
         return icu_readmission
 
     def load_icu_readmission(self):
@@ -116,7 +116,7 @@ class DataLoader():
         dead_in_hosp = admission_df[admission_df.hospital_expire_flag ==1][['hadm_id','hospital_expire_flag']]
         dead_in_hosp.columns=['hadm_id','dead_in_hosp']
         print('병원 내 사망자 수:',dead_in_hosp.shape[0])
-        dead_in_hosp.to_csv("./dead_in_hosp.csv",index=False)
+        dead_in_hosp.to_csv("./result/dead_in_hosp.csv",index=False)
         return dead_in_hosp
     
     def load_dead_in_hosp(self):
@@ -147,7 +147,7 @@ class DataLoader():
         print(f"입원 후 28일 내 사망자(병원내 사망 제외): {key_df['dead_in_28d'].value_counts()[1]}")
         print(f"입원 후 6개월 내 사망자(병원내 사망 제외): {key_df['dead_in_6m'].value_counts()[1]}")
         print(f"사망자(병원내 사망 제외): {key_df['dead_los'].value_counts().sum()}")
-        key_df.to_csv("./key.csv",index=False)
+        key_df.to_csv("./result/key.csv",index=False)
         return key_df
 
     def load_key(self):
@@ -162,12 +162,12 @@ class DataLoader():
 
         labled_feature = pd.merge(icu_readmission_df, dead_in_hosp_df, on=['hadm_id'], how='left')
         labled_feature = pd.merge(labled_feature, key_df[['dead_in_28d','dead_in_6m','dead_los','hadm_id']], on=['hadm_id'], how='left').fillna(0).drop(columns=['subject_id','icustay_id'])
-        labled_feature.to_csv('./label.csv', index=False)
+        labled_feature.to_csv('./result/label.csv', index=False)
         return labled_feature
 
     def load_label(self):
         print("RUN load_label")
-        return self.load_or_extarct("./label.csv", self.extract_label)
+        return self.load_or_extarct("./result/label.csv", self.extract_label)
 
     def ohe(self, df, columns):
         ohes = []

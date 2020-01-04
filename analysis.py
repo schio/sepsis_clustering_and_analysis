@@ -39,5 +39,5 @@ class Analysis():
             result = pd.merge(result, p_values_df, left_index=True, right_index=True)        
 
         result = result.reset_index().rename(columns={'index':'column'})
-        result.to_csv(f"./basic_characteristics_{filename_for_save}.csv")
+        result.to_csv(f"./result/basic_characteristics_{filename_for_save}.csv")
         return result
