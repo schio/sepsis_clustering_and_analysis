@@ -19,8 +19,8 @@ class Analysis():
             n = df.shape[0]
             if n == 0:
                 continue
-
             df = df.describe()
+            print(df)
             df = df.astype('int').astype('str')
             df = df.transpose()
             result[f'{categoty}(n={n})'] = df[['mean','std']].apply(lambda x: '(+-'.join(x)+')', axis=1)
@@ -39,5 +39,6 @@ class Analysis():
             result = pd.merge(result, p_values_df, left_index=True, right_index=True)        
 
         result = result.reset_index().rename(columns={'index':'column'})
-        result.to_csv(f"./result/basic_characteristics_{filename_for_save}.csv")
+        result.to_csv(f"./result/basic_characteristics_{filename_for_save}")
+        print(f"./result/basic_characteristics_{filename_for_save}")
         return result

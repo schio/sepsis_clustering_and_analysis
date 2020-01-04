@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 class DataLoader():
     def __init__(self):
         warnings.filterwarnings('ignore')
-        self.origin_csv_path = "~/Workspace/paper/mimic"    
+        self.origin_csv_path = "/home/scio/Workspace/paper"    
 
     def extract_labeled_after_feature(self):
         print("RUN extract_labeled_after_feature")
@@ -23,7 +23,7 @@ class DataLoader():
 
     def load_labeled_after_feature(self):
         print("RUN load_labeled_after_feature")
-        return self.load_or_extarct("labeled_new_feature_v1_after_mice.csv", self.extract_labeled_after_feature)
+        return self.load_or_extarct("result/labeled_new_feature_v1_after_mice.csv", self.extract_labeled_after_feature)
 
     def extract_labeled_for_feature(self):
         print("RUN extract_labeled_for_feature")
@@ -39,10 +39,10 @@ class DataLoader():
 
     def load_labeled_for_feature(self):
         print("RUN load_labeled_for_feature")
-        return self.load_or_extarct("labeled_new_feature_v1_for_mice.csv", self.extract_labeled_for_feature)
+        return self.load_or_extarct("result/labeled_new_feature_v1_for_mice.csv", self.extract_labeled_for_feature)
 
     def load_or_extarct(self, file_name, func):
-        csv_path = os.path.join("~", "result", file_name)
+        csv_path = os.path.join("/","home","scio", "Workspace", "paper","sepsis_clustering_and_analysis", file_name)
         if os.path.exists(csv_path):
             return pd.read_csv(csv_path)
         else:
@@ -50,9 +50,9 @@ class DataLoader():
 
     def get_csv_path(self, file_name, is_row_mimic=True):
         if is_row_mimic:
-            df = pd.read_csv(os.path.join(self.origin_csv_path, "csv", file_name))
+            df = pd.read_csv(os.path.join(self.origin_csv_path, "mimic", "csv", file_name))
         else:
-            df = pd.read_csv(os.path.join(self.origin_csv_path, file_name))
+            df = pd.read_csv(os.path.join("result", file_name))
         df.columns = map(str.lower, df.columns)
         return df
         
@@ -98,16 +98,16 @@ class DataLoader():
         target_days = [2, 7, 28]
         for day in target_days:
             icu_readmission = pd.concat([icu_readmission, get_target_days(day)], axis=1)
-        print(f"ICU 입원 수: {visit_df[visit_df.eventtype == 'admit'].shape[0]}")
-        print(f"2일 내 icu 재입원 환자 수: {icu_readmission['readmit_2d'].value_counts()[1]}")
-        print(f"7일 내 icu 재입원 환자 수: {icu_readmission['readmit_7d'].value_counts()[1]}")
-        print(f"28일 내 icu 재입원 환자 수: {icu_readmission['readmit_28d'].value_counts()[1]}")
+        # print(f"ICU 입원 수: {visit_df[visit_df.eventtype == 'admit'].shape[0]}")
+        # print(f"2일 내 icu 재입원 환자 수: {icu_readmission['readmit_2d'].value_counts()[1]}")
+        # print(f"7일 내 icu 재입원 환자 수: {icu_readmission['readmit_7d'].value_counts()[1]}")
+        # print(f"28일 내 icu 재입원 환자 수: {icu_readmission['readmit_28d'].value_counts()[1]}")
         icu_readmission.to_csv("./result/icu_readmission.csv", index=False)
         return icu_readmission
 
     def load_icu_readmission(self):
         print("RUN load_icu_readmission")
-        return self.load_or_extarct("icu_readmission.csv", self.extract_icu_readmission)
+        return self.load_or_extarct("result/icu_readmission.csv", self.extract_icu_readmission)
 
     def extract_dead_in_hosp(self):
         print("RUN extract_dead_in_hosp")
@@ -115,20 +115,20 @@ class DataLoader():
 
         dead_in_hosp = admission_df[admission_df.hospital_expire_flag ==1][['hadm_id','hospital_expire_flag']]
         dead_in_hosp.columns=['hadm_id','dead_in_hosp']
-        print('병원 내 사망자 수:',dead_in_hosp.shape[0])
+        # print('병원 내 사망자 수:',dead_in_hosp.shape[0])
         dead_in_hosp.to_csv("./result/dead_in_hosp.csv",index=False)
         return dead_in_hosp
     
     def load_dead_in_hosp(self):
         print("RUN load_dead_in_hosp")
-        return self.load_or_extarct("dead_in_hosp.csv", self.extract_dead_in_hosp)
+        return self.load_or_extarct(os.path.join("result", "dead_in_hosp.csv"), self.extract_dead_in_hosp)
 
     def extract_key(self):
         print("RUN extract_key")
         patients = self.get_csv_path("PATIENTS.csv")
         patients = patients.fillna(0)
         patients = patients[patients.dod != 0].drop(columns=['row_id'])
-        print('미믹 내 사망자 수:',patients.shape[0])
+        # print('미믹 내 사망자 수:',patients.shape[0])
 
         last_admit_df = self.get_csv_path("ADMISSIONS.csv").fillna(0)
         last_admit_df.columns = map(str.lower, last_admit_df.columns)
@@ -144,15 +144,15 @@ class DataLoader():
         key_df['dead_in_28d'] =key_df['dead_after_out_hosp'].apply(lambda x: 1 if x<29 else 0)
         key_df['dead_in_6m'] =key_df['dead_after_out_hosp'].apply(lambda x: 1 if x<30*6 else 0)
         key_df['dead_los']  =key_df['dead_after_out_hosp']
-        print(f"입원 후 28일 내 사망자(병원내 사망 제외): {key_df['dead_in_28d'].value_counts()[1]}")
-        print(f"입원 후 6개월 내 사망자(병원내 사망 제외): {key_df['dead_in_6m'].value_counts()[1]}")
-        print(f"사망자(병원내 사망 제외): {key_df['dead_los'].value_counts().sum()}")
+        # print(f"입원 후 28일 내 사망자(병원내 사망 제외): {key_df['dead_in_28d'].value_counts()[1]}")
+        # print(f"입원 후 6개월 내 사망자(병원내 사망 제외): {key_df['dead_in_6m'].value_counts()[1]}")
+        # print(f"사망자(병원내 사망 제외): {key_df['dead_los'].value_counts().sum()}")
         key_df.to_csv("./result/key.csv",index=False)
         return key_df
 
     def load_key(self):
         print("RUN load_key")
-        return self.load_or_extarct("key.csv", self.extract_key)
+        return self.load_or_extarct("result/key.csv", self.extract_key)
 
     def extract_label(self):
         print("RUN extract_label")
@@ -167,7 +167,7 @@ class DataLoader():
 
     def load_label(self):
         print("RUN load_label")
-        return self.load_or_extarct("./result/label.csv", self.extract_label)
+        return self.load_or_extarct("result/label.csv", self.extract_label)
 
     def ohe(self, df, columns):
         ohes = []
@@ -192,7 +192,17 @@ class DataLoader():
         if 'unnamed: 0' in df.columns:
             x = x.drop(columns=['unnamed: 0'])
         x = x.fillna(-1)
-        x = x.drop(columns=['sofa'])
+        x = x.drop(columns=[
+            'sofa',
+            'steroid',
+            'abx_cnt',
+            'amountmv_cryst24',
+            'amountmv_cryst72',   
+            'amountmv_collo24',   
+            'amountmv_collo72',   
+            'amountoutput24',   
+            'amountoutput72'
+            ])
 
         return [x, y]
     
